@@ -1,0 +1,78 @@
+<link rel="import" href="../d2l-hm-constants-behavior/d2l-hm-constants-behavior.html">
+<link rel="import" href="./siren-entity-behavior.html">
+
+<script>
+	'use strict';
+	window.D2L = window.D2L || {};
+	window.D2L.PolymerBehaviors = window.D2L.PolymerBehaviors || {};
+	window.D2L.PolymerBehaviors.Rubric = window.D2L.PolymerBehaviors.Rubric || {};
+
+	/**
+	 * Behavior for computing assessment results from an assessment entity
+	 * @polymerBehavior
+	 */
+	D2L.PolymerBehaviors.Rubric.AssessmentResultBehaviorImpl = {
+		properties: {
+			assessmentEntity: Object,
+			assessmentResult: {
+				type: Object,
+				value: null,
+				computed: '_computeAssessmentResult(assessmentEntity)'
+			}
+		},
+
+		_computeAssessmentResult: function(assessmentEntity) {
+			if (!assessmentEntity) {
+				return;
+			}
+			var assessmentMap = {};
+			var criteriaEntities = assessmentEntity.getSubEntitiesByClass(this.HypermediaClasses.rubrics.criterionCellSelector);
+			for (var i = 0; i < criteriaEntities.length; i++) {
+				var criterionEntity = criteriaEntities[i];
+				var selectedCriterionCellEntity = criterionEntity.getSubEntityByClass(this.HypermediaClasses.rubrics.selected);
+				if (selectedCriterionCellEntity) {
+					var link = selectedCriterionCellEntity.getLinkByRel(this.HypermediaRels.Rubrics.criterionCell);
+					var rowLink = selectedCriterionCellEntity.getLinkByRel(this.HypermediaRels.Rubrics.criterion);
+
+					if (link.href) {
+						var feedback = selectedCriterionCellEntity.getSubEntityByClass(this.HypermediaClasses.rubrics.feedback);
+						var assessment = {
+							score: selectedCriterionCellEntity.properties.score,
+							level: selectedCriterionCellEntity.getLinkByRel(this.HypermediaRels.Rubrics.level),
+							feedback: feedback && feedback.properties && feedback.properties.html
+						};
+						assessmentMap[link.href] = assessment;
+						assessmentMap[rowLink.href] = assessment;
+					}
+
+				}
+			}
+			return assessmentMap;
+		},
+
+		_getItem: function(criterionEntity, assessmentResult, itemFetcher) {
+			if (assessmentResult[this._getSelfLink(criterionEntity)]) {
+				return itemFetcher(assessmentResult[this._getSelfLink(criterionEntity)]);
+			}
+		},
+
+		getAssessedLevelHref: function(criterionEntity, assessmentResult) {
+			return this._getItem(criterionEntity, assessmentResult, function(x) {return x.level.href;});
+		},
+
+		getAssessedScore: function(criterionEntity, assessmentResult) {
+			return this._getItem(criterionEntity, assessmentResult, function(x) {return x.score;});
+		},
+
+		getAssessmentFeedback: function(criterionEntity, assessmentResult) {
+			return this._getItem(criterionEntity, assessmentResult, function(x) {return x.feedback;});
+		}
+	};
+
+	/** @polymerBehavior */
+	D2L.PolymerBehaviors.Rubric.AssessmentResultBehavior = [
+		D2L.PolymerBehaviors.Rubric.AssessmentResultBehaviorImpl,
+		D2L.PolymerBehaviors.Rubric.SirenEntityBehavior,
+		window.D2L.Hypermedia.HMConstantsBehavior
+	];
+</script>
